@@ -1,0 +1,606 @@
+---
+title: "Report 2"
+author: "Kamil Zaborniak"
+output: pdf_document
+header-includes:
+ \usepackage{booktabs}
+ \usepackage{longtable}
+ \usepackage{array}
+ \usepackage{multirow}
+ \usepackage[table]{xcolor}
+ \usepackage{wrapfig}
+ \usepackage{float}
+ \floatplacement{figure}{H}
+ \usepackage{multicol}
+---
+\newtheorem{example}{Przykład}[section]
+
+```{r setup, include=FALSE, cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tinytex)
+#library(reshape2)
+library(goftest)
+library(data.table)
+library(rmarkdown)
+library(kableExtra)
+library(gridExtra)
+library(stringr)
+library(tibble)
+library(ggplot2)
+library(grid)
+library(egg)
+library(dplyr)
+library(readr)
+library(MASS)
+library(latex2exp)
+#library(multtest)
+#library(mutoss)
+library(plyr)
+library(ellipse)
+library(magrittr)
+library(plotly)
+library(GGally)
+#R.Version()
+```
+
+\tableofcontents
+
+
+\pagebreak
+
+
+# Relationsship between the distributions
+
+
+First, consider the relationship between the standard normal distribution and $\chi^2$ with $p$ degrees of freedom. Let us recall the definition of the $F$ distribution with $d_1$ and $d_2$ degrees of freedom. Then we will check the relationship between the multivariate normal distribution and $\chi^2$, and recall the theory of hypothesis testing using Hotelling statistic.
+
+\begin{enumerate}
+\item Let's assume that we have a sample of independent random variables: $Z_1,\ldots, Z_p$, coming from a standard normal distribution, then the sum of their squares:
+$$\sum_{i=1}^p Z_i^2 = S^2 \sim \chi^2_p.$$
+Where $\mathbb{E}[Q]=k$ and $Var[Q]=2p.$ Moreover, let us assume independent random variables: $U^2=\sum_{j=1}^kZ_j^2\sim\chi^2_k$ and $V^2=\sum_{i=1}^lZ_i^2\sim\chi^2_l$, then:
+$$\frac{\frac{U^2}{k}}{\frac{V^2}{l}}= Q\sim F_{k,l}$$.
+
+\item
+Let $X\sim F_{p,n-p}$. We can write the variable $X$ as $\tfrac{\chi^2_p/p}{\chi^2_{n-p}/(n-p)}$. 
+From Weak Law of Large Numbers we know:
+$$\frac{Z_1^2+\ldots+Z_n^2}{n}\longrightarrow \frac{n}{n}=1,$$
+so
+$$\frac{\chi^2_p/p}{\chi^2_{n-p}/(n-p)}\xrightarrow{n\to \infty} \frac{\chi^2_p/p}{1}=\frac{\chi^2_p}{p}.$$
+For $p=4$ and $n=1000$, $F_{p,n-p}$ will approximately follow $\tfrac{\chi^2_4}{4}$.
+
+\item
+Let $X_1\ldots,N_n\sim N_p(\mu,\Sigma)$, where:
+$$\mu=\begin{bmatrix}
+\mu_1\\
+\vdots \\
+\mu_p
+\end{bmatrix}, \qquad 
+\Sigma=\begin{bmatrix}
+\sigma_{1,1} & \ldots & \sigma_{1,p}\\
+\vdots & \ddots & \vdots\\
+\sigma_p,1 & \ldots & \sigma_{p,p}
+\end{bmatrix}.$$
+Then
+\begin{equation*}
+\begin{split}
+n\left(\overline{X}-\mu\right)^T\Sigma^{-1}\left( \overline{X}-\mu\right)&= n\left(\overline{X}-\mu\right)^T\Sigma^{-1/2}\Sigma^{-1/2}\left( \overline{X}-\mu\right)\\&= 
+n\left(\Sigma^{-1/2} \left(\overline{X}-\mu\right)\right)^T\Sigma^{-1/2}\left( \overline{X}-\mu\right)\\&=
+\left(\sqrt{n} \Sigma^{-1/2} \left(\overline{X}-\mu\right)  \right)^2\\&=Z^TZ\\&=\sum_{i=1}^nZ_i^2\xrightarrow[]{D}\chi^2_n
+\end{split}
+\end{equation*}
+
+Where $\sqrt{n}\Sigma^{-1/2} \left(\overline{X}-\mu\right)=Z\sim N_p(0,\mathbb{I})$, $\mu-\mu=0$, $\Sigma^{-1/2}\Sigma\Sigma^{-1/2}=\mathbb{I}$, $Z=[Z_1,\ldots,Z_p]^T$.
+
+\item
+Let $X_1\ldots,N_n\sim N_p(\mu,\Sigma)$. Assume we do not know either $\mu$ or $\Sigma$. We want to test
+ the hypothesis $H_0: \mu = \mu_0$ against $H_1 : \mu\neq \mu_0$. The Hotelling statistic has form:
+ $$T^2=n\left(\overline{X}-\mu_0\right)^TS^{-1}\left( \overline{X}-\mu_0\right),$$
+ where $S$ denotes the sample covariance matrix. When null hypothesis is true, then $\tfrac{n-p}{(n-1)p}T^2$ is distributed as $F_{p,n-p}$, what is more, large values of $T^2$ lead to rejection of the null hypothesis. It follows that we reject $H_0$ at level $\alpha$ if $\tfrac{n-p}{(n-1)p}T^2\geq F_{p,n-p}^{-1}(1-\alpha)$, where $F_{p,n-p}^{-1}(1-\alpha)$ is $1-\alpha$ quantile of $F_{p,n-p}$.
+ 
+Based on the previous bullet points and The Weak Law of Large Numbers, if $n\to\infty$, Statistic $T^2\xrightarrow{D}\chi^2_p$. It follows that probability of rejecting of $H_0$ is:
+$$P_{H_0}\left(T^2\geq {(\chi^2_{p})}^{-1}_{1-\alpha} \right)\to \alpha.$$
+Let us assume that $H_1$ is true, then the power of the above test, under $n\to\infty$ is:
+$$P_{H_1}\left(T^2\geq {(\chi^2_{p})}^{-1}_{1-\alpha} \right).$$
+Under $H_1$, $T^2$ has the noncentral $\chi^2_p$ distribution with noncentrality parameter $\lambda=T^2$, so power of above test depends on difference between $\overline{X}$ and $\mu_0$.
+I think the power converges to 1 with $n\to\infty$, and I'm sure the power is higher than $1-\alpha$.
+\end{enumerate}
+
+
+# Multiple testing
+
+We have random vector $X=[1.7,1.6,3.3,2.7,-0.04,0.35,-0.5,1.0,0.7,0.8]^T\sim N_{10}(0,\mathbb{I})$. For each $i$-th. vector coordinate, let's test a set of hypotheses:
+$$H_{0,i}: \mu_{i}=0 \quad vs. \quad H_{1,i}:\mu_{i}\neq 0$$
+The Bonferroni test will reject $H_0^{(i)}$ if $|X_i|\geq \left|\Phi^{-1}\left(\tfrac{\alpha}{2p}\right)\right|$. So in our case Bonferroni correction reject the 3rd. null hypothesis at significance level $\alpha=0.05$.
+
+The Benjamini-Hochberg procedure requires sorting in descending order the absolute values of the test statistics (in our case, just vector coordinates): $|X|_{(1)}\geq|X|_{(2)}\geq\ldots\geq|X|_{(p)}$. After that, it reject all $H_{0,(i)}$ for $i\leq i_{SU}$, where $i_{SU}$ is the largest index which it occurs:
+$|X|_{(i)}\geq\Phi^{-1}(1-\alpha_i)$, $\alpha_i=\alpha\tfrac{i}{2p}$. I our case this procedure will reject 3rd. and 4th. hypothesis.
+
+If we assume that the first 3 null hypotheses are false, then the FDR for Bonferroni procedure is equal to 0 and  $0.5$ for Benjamini-Hochberg procedure.
+
+## Simulation
+
+ Let's consider the sequence of independent random variables $X_1,...,X_p$ such that $X_i\sim N(\mu_i,1)$ and the problem of the multiple testing of the hypotheses $H0_i : \mu_i = 0$, for
+ $i \in \{1,...,p\}$. We assumme $p = 5000$ and $\alpha = 0.05$. We will use the simulations (at least 1000 replicates) to estimate FWER, FDR and the power of the Bonferroni and the Benjamini-Hochberg
+ multiple testing procedures for the following setups.
+ \begin{enumerate}
+ 
+ \item $\mu_1 = \ldots = \mu_{10} = \sqrt{2\log p},\quad \mu_{11} = \ldots = \mu_p = 0$
+ After 1000 replicates of test using Bonferroni procedure, it's power is equall to 0.392, FWER=0.04 and FDR=0.01. For Benjamini-Hochberg: power=0.546, FWER=0.282, FDR=0.048.
+ 
+ \item $\mu_1 = \ldots = \mu_{500} = \sqrt{2\log p},\quad \mu_{501} = \ldots = \mu_p = 0$
+  After 1000 replicates of test using Bonferroni procedure, it's power is equall to 0.385, FWER=0.034 and FDR=0.0001. For Benjamini-Hochberg: power=0.902, FWER=1, FDR=0.045.
+ 
+ \end{enumerate}
+ 
+We see that Bonferroni's method makes fewer errors as the number of false null hypotheses increases, but its power fluctuates around 0.40. As the number of false null hypotheses increases, the procedure better controls FWER and FDR.
+
+The Benjamini-Hochberg procedure, regardless of the case, does not control the FWER, but it does control the FDR, the value of which is less than $\alpha=0.05$. Moreover, this procedure shows that its power increases as the number of false null hypotheses increases.
+
+```{r multi test sim, echo=FALSE, comment=F, warning=FALSE, cache=TRUE}
+p<-5000
+p_0<- 10
+alpha<-0.05
+mu_0<- sqrt(2*log(p))
+
+funsimmultest<- function(p=5000,p_0, alpha, mu_0){
+sample<- c(rnorm(p_0, mean=mu_0), rnorm(p-p_0))
+p_vals<- 2*(1- pnorm(abs(sample)))
+tests<- p.adjust(p_vals, method="bonferroni")<=alpha
+pow_bonf<- mean(tests[1:p_0])
+V_bonf <- sum(tests[(p_0+1):p])
+FDP_bonf<- V_bonf/ max(sum(tests),1)
+
+tests<- p.adjust(p_vals, method="BH")<=alpha
+pow_bh<- mean(tests[1:p_0])
+V_bh <- sum(tests[(p_0+1):p])
+FDP_bh<- V_bh/ max(sum(tests),1)
+
+c(power_bonf=pow_bonf, FWER_bonf = V_bonf>=1, FDR_bonf= FDP_bonf,
+  power_bh=pow_bh, FWER_bh = V_bh>=1, FDR_bh= FDP_bh) %>%
+  return()
+}
+
+replicate(1000,funsimmultest(p,p_0,alpha,mu_0)) %>% rowMeans()-> res_10
+
+p_0<- 500
+replicate(1000,funsimmultest(p,p_0,alpha,mu_0)) %>% rowMeans()-> res_500
+
+```
+
+
+# Analysis of Printing Bank Notes 
+
+
+In the following section, we will analyze banking data. The Swiss bank data consists of 100 measurements on genuine bank notes. The measurements are:
+\begin{enumerate}
+\item $X_1$ --- length of the bill,
+\item $X_2$ --- height of the bill (left),
+\item $X_3$ --- height of the bill (right),
+\item $X_4$ --- distance of the inner frame to the lower border,
+\item $X_5$ --- distance of the inner frame to the upper border,
+\item $X_6$ --- length of the diagonal of the central picture.
+\end{enumerate}
+The data can be found in the file \textit{BankGenuine.txt}.
+
+
+```{r load data bank genuine, echo=FALSE, comment=F, warning=FALSE, cache=TRUE}
+data<- read.table("BankGenuine.txt")
+colnames(data)<-c("X1", "X2", "X3", "X4","X5","X6")
+
+```
+```{r plot pairs, echo=FALSE, comment=F, fig.align = "center", warning=FALSE, cache=TRUE, fig.cap="Scatterplots of Bank Notes data, densities and correlations between variables."}
+ggpairs(data) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size=5),
+        axis.text.y = element_text(size=5))
+```
+```{r plot qq, echo=FALSE, comment=F, fig.align = "center", warning=FALSE, cache=TRUE, fig.cap="Q-q plots of variables."}
+means<- colMeans(data)
+covs <- cov(data)
+vars<- diag(covs)
+
+i<-1
+ggplot(data, aes(sample=X1))+
+  stat_qq(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])))+
+  stat_qq_line(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])), col="red")+
+  xlab("Theoretical quantiles of X1")+
+  ylab("Quantiles of sample of X1")+
+  theme_bw()->a1
+
+i<-2
+ggplot(data, aes(sample=X2))+
+  stat_qq(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])))+
+  stat_qq_line(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])), col="red")+
+  xlab("Theoretical quantiles of X2")+
+  ylab("Quantiles of sample of X2")+
+  theme_bw()->a2
+
+i<-3
+ggplot(data, aes(sample=X3))+
+  stat_qq(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])))+
+  stat_qq_line(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])), col="red")+
+  xlab("Theoretical quantiles of X3")+
+  ylab("Quantiles of sample of X3")+
+  theme_bw()->a3
+i<-4
+ggplot(data, aes(sample=X4))+
+  stat_qq(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])))+
+  stat_qq_line(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])), col="red")+
+  xlab("Theoretical quantiles of X4")+
+  ylab("Quantiles of sample of X4")+
+  theme_bw()->a4
+i<-5
+ggplot(data, aes(sample=X5))+
+  stat_qq(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])))+
+  stat_qq_line(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])), col="red")+
+  xlab("Theoretical quantiles of X5")+
+  ylab("Quantiles of sample of X5")+
+  theme_bw()->a5
+i<-6
+ggplot(data, aes(sample=X6))+
+  stat_qq(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])))+
+  stat_qq_line(distribution = qnorm, dparams = list(mean=means[i], sd=sqrt(vars[i])), col="red")+
+  xlab("Theoretical quantiles of X6")+
+  ylab("Quantiles of sample of X6")+
+  theme_bw()->a6
+
+ggarrange(a1,a2,a3,a4,a5,a6, ncol=3)
+```
+
+
+The estimator vector of means of above variables is equal to:
+$$\hat{\mu}=[214.969, 129.943, 129.720,   8.305,  10.168, 141.517]^T$$
+and estimator of covariance matrix has form:
+$$
+\hat{\Sigma}=
+\begin{bmatrix}
+0.150 & 0.058 & 0.057&  0.057&  0.014 & 0.005\\
+0.058&  0.133 & 0.086&  0.057&  0.049& -0.043\\
+0.057&  0.086 & 0.126&  0.058&  0.031& -0.024\\
+0.057 & 0.057 & 0.058&  0.413& -0.263&  0.0001\\
+0.014 & 0.049 & 0.031& -0.263&  0.421& -0.075\\
+0.005 &-0.043 &-0.024&  0.0001& -0.075&  0.200\\
+\end{bmatrix}.    
+$$
+
+Let's write, based on the Hotelling's $T^2$ statistics, function in \textit{R} that verifying if a point lies inside of the six dimensional ellipsoid, which serve as the 95\% confidence region for the value the mean value of bank notes. We treat this task as a hypothesis test: $H_0: \mu=X$ vs. $H_1: \mu\neq X$ in which we use Hotelling's $T^2$ statistic. 
+
+In our case, from lecture notes, we know that point $X$ lies inside of the six dimensional 95\% CR if:
+$$100\cdot(\hat{\mu}-X)^T\hat{\Sigma}^{-1}(\hat{\mu}-X) \leq \tfrac{(100-1)\cdot 6}{100-6}F^{-1}_{6,100-6}(0.95)$$
+what is equivalent to:
+$$100\cdot(\hat{\mu}-X)^T\hat{\Sigma}^{-1}(\hat{\mu}-X) \leq \tfrac{594}{94}F^{-1}_{6,94}(0.95)$$
+The function in \textit{R} of above problem has form:
+```{r, include=T, cache=TRUE}
+verifyPointsInsideCR<- function(data, point, prob=0.95){
+  n <- length(data[,1])
+  p <- length(data)
+  S_inv<- cov(data) %>% solve()
+  means <- data %>% colMeans()
+  
+  T2 <- n*t(means - point) %*% S_inv %*% (means - point)
+  crit_v <- (n-1)*p/(n-p) * qf(prob, p, n-p)
+  
+  return(T2<= crit_v)
+}
+```
+
+
+Let's consider the following situation: "A new production line that will be replacing the old one for printing the bank notes is tested and one of the requirements is that the average dimensions of the bank notes are comparable to these represented in the provided sample of the original bank notes. After printing a very long series of bank notes in the new production line, it was found that the mean values of the dimensions are $\mu_0=[214.97, 130, 129.67, 8.3, 10.16, 141.52]^T$. (Since the number of bank notes printed out for this purpose was very large so the error of for the obtained mean values is negligible)". Using the procedure and function \textit{verifyPointsInsideCR} described above, let's check whether a given point belongs to 95\% CR.
+
+The $T^2$ is equal to $13.9149$ and the critical value is equal to $13.8807$, which means that $\mu_0$ doesn't lies inside of our 95\% CR.
+```{r bank genuine zad4, include=FALSE, cache=TRUE, echo=FALSE}
+point<- c(214.97, 130, 129.67, 8.3, 10.16, 141.52)
+p2z4<- verifyPointsInsideCR(data, point)
+```
+
+Let's define the Bonferroni’s confidence rectangular region. the below interval cover our real $\mu_i$ with probability 0.95:
+$$\hat{\mu_i}\pm t_{99}\left(1-\tfrac{0.05}{12} \right)\sqrt{\hat{\sigma_i}^2/100}$$
+Then the real vector of means is covered by the Bonferroni's confidence rectangular region with probability less or equal to $\left(1-0.05\right)^6$.
+```{r bank genuine zad5, include=FALSE, cache=TRUE, echo=FALSE}
+means<- colMeans(data)
+covs <- cov(data)
+vars<- diag(covs)
+n<- 100
+left<- means- qt(0.05/12, df=99, lower.tail = F)*sqrt(vars/n)
+right<- means+ qt(0.05/12, df=99, lower.tail = F)*sqrt(vars/n)
+left<= point
+point<=right
+
+```
+The point $\mu_0$ lies inside the Bonferroni's confidence rectangular region.
+```{r zad6, include=FALSE, cache=TRUE, echo=FALSE}
+eig<- eigen(covs)$values
+funplt<- function(i, means, point, left, rigth){
+  c<- numeric(6)
+  c[i]<-1
+  xleft <- t(c)%*%means - sqrt(
+    6*99/94/100*qf(0.95,6,94)*t(c)%*%covs%*%c
+  )
+  xright<- means[i] + sqrt(
+    6*99/94/100*qf(0.95,6,94)*t(c)%*%covs%*%c
+  )
+  left<- means[i]- qt(0.05/12, df=99, lower.tail = F)*sqrt(vars[i]/n)
+right<- means[i]+ qt(0.05/12, df=99, lower.tail = F)*sqrt(vars[i]/n)
+  ggplot()+
+    geom_segment(aes(x=xleft, y=1.5, xend=xright, yend=1.5, color="based on T^2"), linewidth=3)+
+    geom_segment(aes(x=left, y=1, xend=right, yend=1, color="based on Bonferroni"), linewidth=3)+
+    geom_vline(xintercept=point[i])+
+    theme_bw()+
+    theme(axis.text.y = element_blank())+
+    labs(color="CR")+
+    ylab("")+
+    xlab(paste0("X",i))-> plt1
+  return(plt1)
+}
+
+plt1<-funplt(1,means, point)
+funplt(2,means, point)-> plt2
+funplt(3,means, point)-> plt3
+funplt(4,means, point)-> plt4
+funplt(5,means, point)-> plt5
+funplt(6,means, point)-> plt6
+#sdaf
+
+
+```
+```{r 2 zad6 plt, echo=FALSE, comment=F, fig.align = "center", warning=FALSE, cache=TRUE, fig.cap="Projections of the both of confodence intervals to the one-dimensional spaces."}
+
+#ggarrange(plt1,plt2,plt3,plt4,plt5,plt6, nrow=6)
+ggarrange(plt1,plt2,plt3,plt4,plt5,plt6, nrow=6)
+#abs
+```
+
+As we can see, the projection of point $\mu_0$ belongs to every CR projection into a one-dimensional subspace, regardless of the type of CR. Moreover, depending on the type of CR, the projections differ.
+
+
+
+```{r zad 7, echo=FALSE, comment=F, fig.align = "center", warning=FALSE,cache=TRUE, fig.cap="Projections of the both of CR types to the two-dimensional spaces."}
+j<-2
+i<-1
+{
+v<- c(1,2)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X1, y=X2)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a12
+
+v<- c(1,3)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X1, y=X3)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a13
+
+v<- c(1,4)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X1, y=X4)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a14
+
+v<- c(1,5)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X1, y=X5)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a15
+
+v<- c(1,6)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X1, y=X6)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a16
+}
+
+{
+v<- c(2,3)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X2, y=X3)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a23
+
+v<- c(2,4)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X2, y=X4)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a24
+
+v<- c(2,5)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X2, y=X5)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a25
+
+v<- c(2,6)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X2, y=X6)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a26
+}
+
+{
+v<- c(3,4)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X3, y=X4)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a34
+
+v<- c(3,5)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X3, y=X5)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a35
+
+v<- c(3,6)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X3, y=X6)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a36
+}
+
+{
+
+v<- c(4,5)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X4, y=X5)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a45
+
+v<- c(4,6)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X4, y=X6)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a46
+}
+
+{
+
+v<- c(5,6)
+ellipse(x = covs[v,v], centre = means[v], level = 0.95) %>%     as.data.frame()->e1
+ggplot(e1, aes(x=X5, y=X6)) +
+  geom_path(aes(col= "T^2 ellipse")) +
+  geom_rect(aes(col= "Bonforroni CR projection"),xmin=left[v[1]], xmax=right[v[1]], ymin=left[v[2]], ymax=right[v[2]], alpha=0)+
+  theme_bw()+
+  geom_point(x=point[v[1]], y=point[v[2]], col="red")+
+  theme( legend.position = "none") ->a56
+}
+
+
+ggarrange(a12, a13, a14,a15,a16,
+a23, ncol=2)
+ggarrange(a24, a25,a26,
+a34, a35, a36,
+ ncol=2)
+ggarrange(a45, a46,a56,
+ ncol=2)
+  
+```
+As we can see in the graphs above, each projection of our point onto two-dimensional subspaces belongs to the CR projection, regardless of the CR type. It may seem contradictory that the point $\mu_0$ does not belong to the CR determined by the $T^2$ statistic. However, if the projection of this CR covers the projection of point $\mu_0$, it does not mean that point $\mu_0$ belongs to this CR. This is also confirmed by the fact that this CR has the form of a 6-dimensional ellipse, unlike the CR determined using the Bonferroni method.
+
+
+It has been decided that the settings of the production line needs to be tuned better to match original dimensions of banknotes. After such tuning, another test has been carried out and the resulting means were $\mu_1=[214.99, 129.95, 129.73, 8.51, 9.96, 141.55]^T$.
+This point is covered by the Hotelling's 95\% CR, but is not covered by Bonferroni 95\% CR. 
+
+After yet another tuning, the vector of means was $\mu_2=[214.9473, 129.9243, 129.6709, 8.3254, 10.0389, 141.4954]^T$. This point is covered by both Confidence Regions. It's means that the probability of the event "$\mu_2$ is the nearest the real vector of means", is the highest.
+
+```{r bank genuine zad9, include=FALSE, cache=TRUE, echo=FALSE}
+point1<- c(214.99, 129.95, 129.73, 8.51, 9.96, 141.55)
+means<- colMeans(data)
+covs <- cov(data)
+vars<- diag(covs)
+n<- 100
+left<- means- qt(0.05/12, df=99, lower.tail = F)*sqrt(vars/n)
+right<- means+ qt(0.05/12, df=99, lower.tail = F)*sqrt(vars/n)
+sum(left<= point1&point1<=right)==6
+
+verifyPointsInsideCR(data, point1)
+
+point2<- c(214.9473, 129.9243, 129.6709, 8.3254, 10.0389, 141.4954)
+sum(left<= point2&point2<=right)
+verifyPointsInsideCR(data, point2)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

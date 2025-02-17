@@ -1,0 +1,476 @@
+---
+title: "report_3"
+author: "Kamil Zaborniak"
+output: pdf_document
+header-includes:
+ \usepackage{booktabs}
+ \usepackage{longtable}
+ \usepackage{array}
+ \usepackage{multirow}
+ \usepackage[table]{xcolor}
+ \usepackage{wrapfig}
+ \usepackage{float}
+ \floatplacement{figure}{H}
+ \usepackage{multicol}
+---
+\newtheorem{example}{Przykład}[section]
+
+```{r setup, include=FALSE, cache=TRUE}
+library(glmnet)
+library(SLOPE)
+library(bigstep)
+knitr::opts_chunk$set(echo = TRUE)
+library(tinytex)
+#library(reshape2)
+library(goftest)
+library(data.table)
+library(rmarkdown)
+library(kableExtra)
+library(gridExtra)
+library(stringr)
+library(tibble)
+library(ggplot2)
+library(grid)
+library(egg)
+library(dplyr)
+library(readr)
+library(MASS)
+library(latex2exp)
+#library(multtest)
+#library(mutoss)
+library(plyr)
+library(ellipse)
+library(magrittr)
+library(plotly)
+library(GGally)
+#R.Version()
+```
+
+\tableofcontents
+
+
+\pagebreak
+
+
+# Multiple regression properties
+
+
+In order to analyze later designs, we will first recall the properties of the trace of a symmetric matrix, consider the matrix $X^TX$, where $X$ is a real matrix of sizes $n\times p$. Then we will repeat the matrix selection criteria and solve simple tasks related to them. Finally, we will recall how LASSO works.
+
+\begin{enumerate}
+\item The trace of the symmetric real matrix
+
+Let $X$ be a real symmetric matrix of size $n \times n$. Let $\lambda_1,\ldots,\lambda_n$ and $e_1,\ldots,e_n$ be the eigenvalues and eigenvectors of matrix $X$, respectively, where the vector $e_i$ corresponds to the eigenvalue of $\lambda_i$. From previous reports, we know that for any symmetric matrix we can write as $X=P\Lambda P^T$, where the matrix $P=[e_1,\ldots,e_n]$ and $\Lambda$ is a diagonal matrix whose diagonal is the vector $[\lambda_1, \ldots,\lambda_n]$. Then the trace of $X$:
+$$tr(X)=tr\left(P\Lambda P^T  \right)=tr\left(P^T P \Lambda\right)=tr(\Lambda)=\sum_{i=1}^n \lambda_i.$$
+\item Properties of $X^TX$, where $X$ is the real matrix of the dimension $n\times p$.
+
+Let's suppose vector $a\in \mathbb{R}^p\setminus \{0\}$, then:
+$$a^T\left( X^TX \right) a = (Xa)^T(Xa)=\|Xa\|^2\geq 0.$$
+This is the proof that $X^TX$ is semipositive definite. 
+Let $\lambda_i$ and $e_i$, where $i\in\{1,\ldots,n\}$ be the eigenvalue and the corresponding eigenvector of the matrix $X^TX$. We know that $\forall_{i\in\{1,\ldots,n\}} X^TXe_i=\lambda_i e_i$. Hence:
+\begin{equation*}
+\begin{split}
+e_i^TX^TXe_i&\geq 0\\
+e_i^T\lambda_ie_i& \geq 0\\
+\lambda_i&\geq 0 
+\end{split}
+\end{equation*}
+What proves that eigenvalues of $X^TX$ are larger or equal to zero.
+
+When $p>n$, then at least one eigenvalue of $X^TX$ is equal to 0. The rank of $X^TX$:
+$$rank\left(X^TX\right) \leq \min\left(rank\left(X^T\right), rank\left(X \right)   \right)\leq n.$$
+Hence $det(X^TX)=0=\prod_{i=1}^p \lambda_i$ ($X^TX$ is symmetric), what is means that at least one of eigenvalues $\lambda_i$ must be equal to 0.
+
+\item Model selection criteria
+
+Below we will consider three known criteria for selecting models:
+\begin{itemize}
+\item Akaike information criterion (AIC) - is the general model selection criteria. It minimizes $ RSS +2k\sigma^2$, where $k$ is the number of estimated model parameters.
+\item Bayesian Information Criterion (BIC) - is used to approximate the posterior probability of a given model. We use when the number of data ($n$) is greater than 8.it minimizes $RSS+\sigma^2k\log n$.
+\item Risk Information Criterion (RIC) - it minimizes $RSS+\sigma^2\cdot2k\log p$. We use this criterion when the number of model variables ($p$) is large.
+\end{itemize}
+
+Let's assume that our data contains 10 variables. We fit 10 regression models including the first variable, the first two variables, etc. The residual sums of squares for these 10 consecutive models are equal to $(1731, 730, 49, 38.9, 32, 29, 28.5, 27.8, 27.6, 26.6)$. The sample size is equal to 100. Assuming that the standard deviation of the error term is known: $\sigma = 1$.
+The 6th. model will be selected by AIC, and 5th model will be selected by BIC and RIC.
+
+Assuming the orthogonal design ($X^TX = I$) and $n = p = 10000$ and none of the variables is really important (i.e. $p_0 = p$). The probability of a type I error according to AIC is: 
+$$P_{AIC}\left(X_i \text{ is selected }| \hat\beta_i=0  \right)=2(1-\Phi(\sqrt{2})),$$ 
+hence the expected number of false discoveries is equal to
+$$0.15729\cdot 10000\approx 1573.$$
+The probability of a type I error according to BIC is: $$P_{BIC}\left(X_i \text{ is selected }| \hat\beta_i=0  \right)=2(1-\Phi(\sqrt{\log n})).$$
+The expected number of false discoveries is equal to:
+$$0.002406\cdot 10000\approx 24.$$
+The probability of a type I error according to RIC is: 
+$$P_{RIC}\left(X_i \text{ is selected }| \hat\beta_i=0  \right)=2(1-\Phi(\sqrt{2\log p})).$$
+The expected number of false discoveries is equal to:
+$$0.000017712\cdot 10000\approx 0.$$
+\item Ridge regression properties under the orthogonal design.
+
+Ridge regression is used in the context of fitting linear regression models in which the number of design matrix variables is greater than the number of data ($X_{n\times p}$, p>n). It was proposed to reduce the variance of least squares estimators. The idea behind ridge regression estimators is similar to James-Stein estimators. It introduces bias, but the variance of the estimator will be smaller, which makes the mean square error smaller. Ridge regression estimators significantly improve least squares estimators.
+
+Assume a design matrix $X$ such that $X^TX=I$, then
+
+$$\hat\beta_{RR}=(X^TX+\gamma I)^{-1}X^TY=\frac{1}{1+\gamma}X^TY=\frac{1}{1+\gamma}\hat\beta_{LS},$$
+where $Y$ is the regressand. 
+
+The formula of the bias of the ridge regression estimators under the orthogonal design matrix has form:
+$$b\left(\hat\beta_{RR}\right)=\mathbb{E}\left[\left\|\hat\beta_{RR}-\beta\right\|\right]=\mathbb{E}\left[\left\|\hat\beta_{RR}-\beta\right\|\right]=\mathbb{E}\left[\left\|\frac{1}{1+\gamma}\hat\beta_{LS}-\beta\right\|\right]=-\frac{\gamma}{1+\gamma}\beta.$$
+Knowing that the variance of the least squares estimate of $\hat\beta_{LS}$ is $\sigma^2I$, the variance of $\hat\beta_{RR}$ is equal to:
+$$Var\left[\hat\beta_{RR}  \right]=Var\left[\frac{1}{1+\gamma}\hat\beta_{LS} \right]=\frac{\sigma^2}{(1+\gamma)^2}I.$$
+Mean square error of $\hat\beta_{RR}$ is equal to:
+$$MSE\left( \hat\beta_{RR}  \right)=b \left( \hat\beta_{RR} \right)^2+Var\left[\hat\beta_{RR}  \right]=\frac{\gamma^2}{(1+\gamma)^2}\left\|\beta   \right\|+\frac{p\sigma^2}{(1+\gamma)^2}.$$
+Ridge regression estimator is better than least square estimator when $\|\beta\|^2\leq p\sigma^2$ or $\gamma< \tfrac{2p\sigma^2}{\|\beta\|^2-p\sigma^2}$ with $\|\beta\|^2>p\sigma^2$.
+
+Let's consider the following situation.
+For a given data set with 40 explanatory variables the residual sums of squares from the least squares method and the ridge regression are equal to: 4.5 and 11.6, respectively. For the ridge regression the trace of $X(X^T X + \gamma I)^{-1} X^T$ is equal to 32. Prediction errors are equal to:
+$$PE_{RR}=11.6+2\sigma^2 \cdot 32=11.6+64\sigma^2,$$
+$$PE_{LS}=4.5+2\sigma^2\cdot40=4.5+80\sigma^2.$$
+When $\sigma^2> \tfrac{71}{160}$, then the ridge regression is better.
+
+\item Properties of LASSO under the orthogonal design.
+
+Least absolute shrinkage and selection operator. LASSO resets the ith. coordinate $\hat\beta_{LS}$ if $|\hat\beta_{LS,i}|<\lambda$. Usually (in our case) $\lambda=\sigma\Phi(1-\alpha/(2p))\approx \sigma\sqrt{2\log p}$, where $\alpha$ is the significance level.
+
+The expected value of false discoveries is equal to:
+$$p\cdot P\left(|\hat\beta_{LS,i}| > \lambda | \beta_i=0  \right)=p\cdot P\left(\tfrac{|\hat\beta_{LS,i}|}{\sigma} > \tfrac{\lambda}{\sigma} | \beta_i=0  \right)=p\cdot2\left(1-\Phi\left(\tfrac{\lambda}{\sigma}\right)\right)=p\cdot 2\left(1-(1-\tfrac{\alpha}{2p})  \right)=\alpha.$$
+The power of LASSO is equal to:
+$$ P\left(|\hat\beta_{LS,i}| > \lambda | \beta_i\neq0  \right)= P\left(\tfrac{\hat\beta_{LS,i}-\beta_i}{\sigma} < \tfrac{-\lambda-\beta_i}{\sigma} | \beta_i\neq 0  \right)+P\left(\tfrac{\hat\beta_{LS,i}-\beta_i}{\sigma} > \tfrac{\lambda-\beta_i}{\sigma} | \beta_i\neq 0  \right)=
+\Phi\left(\tfrac{-\lambda-\beta_i}{\sigma}\right)+1-\Phi\left(\tfrac{\lambda-\beta_i}{\sigma}\right).$$
+
+
+
+
+
+
+\end{enumerate}
+
+
+# James-Stein estimators
+
+To consider James-Stein estimators, let's analyze the data contained in the \textit{Lab3.Rdata} dataset. This set contains expressions of 300 genes for 210 individuals.
+
+First, we scale the data. We subtract the mean of this vector from the vector of each column of the $xx$ matrix, then divide it by its standard deviation and add the mean to it. This action is intended to preserve the mean of the column vector while equalizing its standard deviation to 1. Knowing that the average expression of each gene is 10, we subtract 10 from each column vector.
+
+Based on the 'standardized' data obtained, we proceed to the next activities. Based on the first five records, we determine the maximum likelihood estimator and both James-Stein estimators (shrunk towards zero and towards common mean). To determine them, we will use $\sigma^2 = 0.2$ because $\hat\mu_{MLE}\sim N(\beta,0.2 I)$. The maximum likelihood estimator of the vector of average gene expressions determined on the basis of the first 5 records is simply the average vector of the first five records. The James-Stein estimator shrunk towards to zero is given by:
+
+$$\hat\mu_{JSc}=c_{JS}\hat\mu_{MLE},$$
+where $c_{JS}=\left(1-\tfrac{(p-2)\sigma^2}{\|\hat\mu_{MLE}\|^2}  \right).$
+The James-Stein estimator shrunk towards to common mean is given by:
+$$\hat\mu_{JSd}=(1-d)\hat\mu_{MLE}+d\overline{\hat\mu_{MLE}},$$
+where $d=\tfrac{p-3}{p-1}\tfrac{\sigma^2}{Var[{\mu_{MLE}}]}.$
+To evaluate the estimators, we will assume that the actual vector of average gene expressions is the vector of averages of the remaining 205 individuals.
+
+The graph of the determined estimators is as follows.
+```{r proj_JS, include=FALSE, cache=TRUE, echo=FALSE}
+## zad 1
+load("Lab3.Rdata")
+#View(xx)
+nam.row<- row.names(xx)
+nam.col<- colnames(xx)
+X<- apply(xx, 2, as.numeric)
+row.names(X)<- nam.row
+#class(X)
+#class(xx)
+
+X_scaled<-  apply(X, 2, function(i) (i-mean(i))/sd(i) + mean(i)) #scale(X) - srednio działa
+X_sub10<- X_scaled-10
+
+# MLE
+mu.mle<- colMeans(X_sub10[1:5,])
+
+# JS estimation - shrunk towards zero
+# warianccja jest równa 1/5 bo 1/n*I   
+p<- 300
+c_JS <- 1 - (0.2* (p-2) / sum(mu.mle^2))
+mu.JS_to0<- c_JS * mu.mle
+
+# JS estimation - shrunk towards common mean
+d_JS<- ((p-3)*0.2)/((p-1)* var(mu.mle))
+mu.JS_tocm<- (1-d_JS)*mu.mle + d_JS*mean(mu.mle)
+
+
+X_sub10.rem210.avg<- colMeans(X_sub10[6:210,])
+df.means<- data.frame(avg=X_sub10.rem210.avg, MLE=mu.mle, JS_c=mu.JS_to0, JS_d=mu.JS_tocm)
+
+df.means<- as.data.table(df.means) %>%  melt(id.vars="avg", variable.name= "Estimator", value.name = "Value")
+ plt<- ggplot(df.means, aes(x=avg, y=Value, col= Estimator))+
+  geom_point(shape=1, size=2)+
+   geom_abline(intercept = 0, slope=1)+
+   xlab("AVG of the 205 individuals remaining")
+```
+```{r js est plt, echo=FALSE, comment=F, fig.align = "center", warning=FALSE, cache=TRUE, fig.cap="Scatter plot of the estimators versus average gene expressions."}
+plt
+```
+
+We see that the James-Stein estimators lie very close to each other and lie closer to the $x=y$ line than the maximum likelihood estimators. The table below presents the squared errors of the estimators, where $SE(\hat\mu)=\|\hat\mu-\mu\|^2$ and $\mu$ is the vector of means of the remaining 205 records.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{l|l|l|l|}
+\cline{2-4}
+ & $\hat\beta_{MLE}$ & $\hat\beta_{JSc}$ & $\hat\beta_{JSd}$ \\ \hline
+\multicolumn{1}{|l|}{SE} & 83.61966 & 77.66406 & 75.14637 \\ \hline
+\end{tabular}
+\caption{Square errors of the estimators.}
+\label{tab:my-table}
+\end{table}
+
+James-Stein estimators have the least squared error, but the estimator shrunk towards common mean has the smallest SE. The above results and the graph confirm the theory that James-Stein estimators are better than the maximum likelihood estimator when the estimated parameter is dimension larger than 2.
+
+
+
+# Prediction Error in Multiple Regression
+
+## Simulation
+
+In order to consider prediction error estimates, we will perform a simulation.
+In a single step, we will generate a $X$ matrix of size $1000\times 950$, whose elements will come from the $N(0, 0.001)$ distribution. We will generate the vector of the response variable according to the model $Y =X \beta + \epsilon$, where $\beta = (3,3,3,3,3,0,...,0)^T$ and $\epsilon \sim N(0,I)$. We will build models based on $k$ first variables, where $k\in\{2,5,10,100,500,950\}$. 
+
+For each model we will estimate $\beta$ using the least squares method and determine the $RSS=\|Y-X\hat\beta_{LS} \|^2$ and the expected value of the prediction error $$PE=\mathbb{E}\| X(\beta-\hat\beta) \|+n\sigma^2=\| X(\beta-\hat\beta) \|+1000.$$
+We will determine the PE estimates assuming that $\sigma$ is known:
+$$\hat{PE_1}=RSS+2\cdot1\cdot k,$$
+and assuming that $\sigma$ is unknown:
+$$\hat{PE_2}=RSS+2\cdot\tfrac{RSS}{n-k}\cdot k.$$
+
+We will determine the last PE estimator based on leave-one-out cross-validation:
+$$\hat{PE}_3=\sum_{i=1}^n\left(\frac{Y_i-\hat Y_i}{1-M_{ii}}  \right)^2,$$
+where $M=X(X^TX)^{-1}X^T$.
+
+After repeating a single simulation step 30 times for each $k$ value, we will average the actual prediction error value and the PE estimator values, and plot the differences between the actual values and the estimators.
+
+## Results
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|r|r|r|r|}
+\hline
+\multicolumn{1}{|c|}{k} & \multicolumn{1}{c|}{PE} & \multicolumn{1}{c|}{$\hat{PE}_1$} & \multicolumn{1}{c|}{$\hat{PE}_2$} & \multicolumn{1}{c|}{$\hat{PE}_3$} \\ \hline
+2 & 1001.960 & 1013.021 & 1013.065 & 1013.134 \\ \hline
+5 & 1004.906 & 1011.597 & 1011.663 & 1011.699 \\ \hline
+10 & 1011.0847 & 1005.9952 & 1005.9143 & 1005.9260 \\ \hline
+100 & 1102.1281 & 1098.9009 & 1098.6567 & 1110.5355 \\ \hline
+500 & 1493.3838 & 1503.5889 & 1510.7666 & 2017.4134 \\ \hline
+950 & 1960.0718 & 1948.0197 & 1872.7715 & 19828.6578 \\ \hline
+\end{tabular}
+\caption{Real and estimated values of the prediction error.}
+\label{tab:my-table1}
+\end{table}
+
+```{r proj_pe, include=FALSE, cache=TRUE, echo=FALSE}
+
+n<- 1000
+p<- 950
+sigma<- 1000^-0.5
+m<-5
+proj1_exc2<- function(m){
+#set.seed(410)
+  X<- replicate(p, rnorm(n,0,sigma))
+
+  # beta p-wymiarowa
+  #  k<- 5
+  Beta<- numeric(p)
+  Beta[1:5]<- 3
+
+  #set.seed(140)
+  epsilon<- rnorm(n)
+
+  # Y= X*B + eps
+  Y<- X %*% Beta + epsilon
+
+  model<- lm(Y~X[,1:m]-1)
+  Beta.est <- coef(model)
+
+  RSS<- sum((Y- X[,1:m]%*% Beta.est)^2)
+  #set.seed(14)
+  #epsilon_1<- rnorm(n)
+  PE.theoretical<- sum( (X[,1:m] %*% (Beta[1:m]-Beta.est))^2)+ n*1 # 2. wzór ppkt. a)
+  PE.1<- RSS + 2*1*m # ppkt. b) sigma =1
+  PE.2<- RSS + 2*RSS/(n-m) *m # (sigma est.= RSS/n-p)    
+  M<- X[,1:m] %*% solve(t(X[,1:m]) %*% X[,1:m]) %*% t(X[,1:m])
+  PE.CV <- sum( ( (Y- X[,1:m] %*% Beta.est) / (1-diag(M)) )^2 ) # leave-one-out cv
+
+  result<-data.frame(m=m, RSS=RSS, PE.theoretical=PE.theoretical, PE_1=PE.1, PE_2=PE.2, PE_3=PE.CV)
+  return( result)
+}
+#proj1_exc2(5)
+#sim_k<-replicate(3, proj1_exc2(5), simplify = T) %>% t() %>% as.data.frame()
+i<-30
+#k<- c(2,5,10,100,500,950)
+df<-rbind(
+  rdply(i, proj1_exc2(2))  %>% as.data.frame(),
+  rdply(i, proj1_exc2(5))  %>% as.data.frame(),
+  rdply(i, proj1_exc2(10)) %>% as.data.frame(),
+  rdply(i, proj1_exc2(100)) %>% as.data.frame(),
+  rdply(i, proj1_exc2(500))  %>% as.data.frame(),
+  rdply(i, proj1_exc2(950))  %>% as.data.frame()
+)
+j=950
+df[df$m==j,] %>% as.data.frame() -> ddd
+colMeans(ddd)
+dfdiff<- data.frame(m=df$m, PE_1=df$PE_1-df$PE.theoretical,
+                 PE_2=df$PE_2-df$PE.theoretical,
+                 PE_3=df$PE_3-df$PE.theoretical) %>% as.data.table() %>% melt(id.vars="m", variable.name= "Estimator", value.name = "Value")
+#dfdiff<- as.data.frame()
+dfdiff$m %<>% as.factor()
+  
+plt1<-ggplot(dfdiff[c(1:330,361:510), ], aes(x=m, y=Value, col=Estimator))+
+  geom_boxplot()+
+  xlab("k")+
+  ylab("Difference")
+plt2<-ggplot(dfdiff[331:360, ], aes(x=m, y=Value, col=Estimator))+
+  geom_boxplot()+
+  xlab("k")+
+  ylab("Difference")
+plt3<-ggplot(dfdiff[511:540, ], aes(x=m, y=Value, col=Estimator))+
+  geom_boxplot()+
+  xlab("k")+
+  ylab("Difference")
+```
+
+```{r pe plt, echo=FALSE, comment=F, fig.align = "center", warning=FALSE, cache=TRUE, fig.cap="Boxplots of differences betweent real PE and its estimators, depends on k."}
+ggarrange(plt1,plt2,plt3, ncol = 1)
+```
+Based on above table and plot I would choose model with first five variables. The models based on 2, 5, 10, 100 variables gives similar results. For $k\geq500$ the best estimator is the first estimator and the worst estimator is the LOO-CV estimator.
+
+# Multiple regression - model selection and regularization
+
+## Simulation
+
+Using simulation, we will generate a $X$ plan matrix of size $1000\times 950$, whose elements will come from the $N(0,0.001)$ distribution. After that we will generate the vector of the response variable according to the model:
+$$Y=X\beta +\epsilon,$$
+where $\beta_1=\ldots=\beta_20=6,$ $\beta_{21}=\ldots=\beta_{950}=0$ and $\epsilon\sim N(0,I)$. We will Analyse this data using:
+\begin{itemize}
+\item mBIC2 criterion,
+\item Ridge with the tuning parameter selected by cross-validation
+\item  LASSO with the tuning parameter selected by cross-validation
+\item  LASSO with the tuning parameter $\lambda=\Phi^{-1}(1-\tfrac{0.1}{2p}$
+\item SLOPE with the BH sequence of the tuning parameters $\lambda_i=\Phi^{-1}(1-\tfrac{0.1i}{2p})$
+\end{itemize}
+For each of these methods we will calculate the square estimation errors $\|\hat\beta-\beta\|^2$ and $\|X(\hat\beta-\beta)\|^2$. In case of LASSO and SLOPE we will consider also estimators obtained by performing the regular least squares fit within the selected model. For all methods apart from ridge we will calculate also the False Discovery Proportion and the True Positive Proportion (Power). 
+
+## Results 
+
+
+```{r proj2sim, include=FALSE, cache=TRUE, echo=FALSE, comment=FALSE, warning=FALSE, error=FALSE, eval=FALSE}
+n<- 1000
+p<- 950
+
+beta<- numeric(p)
+epsilon<- 2* rnorm(n)
+k<- 20
+beta[1:k]<- 6
+
+X<- replicate(p, rnorm(n, sd=sqrt(1/n)))
+
+Y <- X%*% beta + epsilon
+
+
+#mBIC2  
+d<- prepare_data(Y, X)
+model_mbic2<- stepwise(d, crit = mbic2) %>% get_model()
+#coef(model_mbic2)
+beta_est.mbic2<- coef(model_mbic2)[-1] # wybieramy znaczace zmienne
+beta_est.mbic2
+id<- as.numeric(gsub("`","", names(beta_est.mbic2)))
+model_mbic2<- lm(Y~X[,sort(id)]-1) # budujemy model
+beta_est.mbic2<- rep(0,p)
+beta_est.mbic2[sort(id)]<- coef(model_mbic2) # estymator bety
+mbic2FDP<- sum( beta_est.mbic2[21:p] >0 ) /  sum( beta_est.mbic2 >0 ) 
+mbic2TDP<- sum( beta_est.mbic2[1:20] >0 ) / k
+#RR
+rr_cv<- cv.glmnet(X,Y,alpha=0, intercept=F, standardize=F)
+beta_est.rr<- coef(rr_cv, s="lambda.min")[-1]
+
+#LASSO
+l_cv<- cv.glmnet(X,Y,alpha=1, intercept=F, standardize=F)
+beta_est.Lmin<- coef(l_cv, s="lambda.min")[-1]
+beta_est.L1se<- coef(l_cv, s="lambda.1se")[-1]
+
+LminFDP<- sum( beta_est.Lmin[21:p] >0 ) /  sum( beta_est.Lmin >0 ) 
+LminTDP<- sum( beta_est.Lmin[1:20] >0 ) /  k
+
+L1seFDP<- sum( beta_est.L1se[21:p] >0 ) /  sum( beta_est.L1se >0 ) 
+L1seTDP<- sum( beta_est.L1se[1:20] >0 ) /  k
+
+lambda<- qnorm(1-0.1/(2*p))/n
+l<- glmnet(X,Y, alpha = 1, intercept=F, standardize=F, lambda = lambda)
+beta_est.L<- coef(l)[-1]
+LFDP<- sum( beta_est.L[21:p] >0 ) /  sum( beta_est.L >0 ) 
+LTDP<- sum( beta_est.L[1:20] >0 ) /  k
+
+#SLOPE
+sl<-SLOPE(X,Y,scale="none", family = "gaussian", alpha=1, lambda=qnorm(1-0.1*(1:p)/2/p)/n)
+beta_est.slope<- coef(sl)[-1]
+slopeFDP<- sum( beta_est.slope[21:p] >0 ) /  sum( beta_est.slope >0 ) 
+slopeTDP<- sum( beta_est.slope[1:20] >0 ) / k
+
+result<- c(mbic2_SE=sum((beta-beta_est.mbic2 )^2), 
+       RR_SE=sum((beta-beta_est.rr )^2), 
+       LASSO_min_SE=sum((beta-beta_est.Lmin )^2), 
+       LASSO_1se_SE=sum((beta-beta_est.L1se )^2), 
+       LASSO_SE=sum((beta-beta_est.L )^2), 
+       SLOPE_SE=sum((beta-beta_est.slope )^2),
+       
+       mbic2_V1=sum((X%*%(beta-beta_est.mbic2 ))^2), 
+       RR_V1=sum((X%*%(beta-beta_est.rr ))^2), 
+       LASSO_min_V1=sum((X%*%(beta-beta_est.Lmin ))^2), 
+       LASSO_1se_V1=sum((X%*%(beta-beta_est.L1se ))^2), 
+       LASSO_V1=sum((X%*%(beta-beta_est.L ))^2), 
+       SLOPE_V1=sum((X%*%(beta-beta_est.slope ))^2),
+       
+       mbic2_FDP=mbic2FDP, 
+       RR_FDP=NA, 
+       LASSO_min_FDP=LminFDP, 
+       LASSO_1se_FDP=L1seFDP, 
+       LASSO_FDP=LFDP, 
+       SLOPE_FDP=slopeFDP,
+       
+       mbic2_TDP=mbic2TDP, 
+       RR_TDP=NA, 
+       LASSO_min_TDP=LminTDP, 
+       LASSO_1se_TDP=L1seTDP, 
+       LASSO_TDP=LTDP, 
+       SLOPE_TDP=slopeTDP
+      )
+
+result
+
+
+```
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|r|r|r|r|}
+\hline
+\multicolumn{1}{|c|}{Method} & \multicolumn{1}{c|}{SE} & \multicolumn{1}{c|}{$\|X(\hat\beta-\beta)\|^2$} & \multicolumn{1}{c|}{FDP} & \multicolumn{1}{c|}{TPP} \\ \hline
+mBIC2 & 677.365 & 658.449 & 0 & 0.1 \\ \hline
+Ridge (c-v) & 687.131 & 666.694 &  &  \\ \hline
+LASSO (c-v, ".min") & 344.543 & 329.295 & 0.558 & 0.95 \\ \hline
+LASSO (c-v, "1se") & 596.587 & 597.005 & 0.181 & 0.45 \\ \hline
+LASSO & 340.048 & 324.429 & 0.577 & 0.95 \\ \hline
+SLOPE & 393.968 & 363.156 & 0.840 & 0.95 \\ \hline
+\end{tabular}
+\caption{Result of the simulation.}
+\label{tab:my-table3}
+\end{table}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
